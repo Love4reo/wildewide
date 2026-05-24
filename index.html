@@ -240,6 +240,14 @@ html, body {
   flex-shrink: 0;
 }
 
+/* ── DURATION FORMAT ── */
+.dur-sep {
+  font-size: 0.55em;
+  color: var(--dim);
+  letter-spacing: 0;
+  margin: 0 1px;
+}
+
 /* ── SOUND ── */
 #sound-btn {
   background: none; border: none; cursor: pointer; padding: 0;
@@ -367,21 +375,21 @@ html, body {
     state: 'complete',
     split: 'PUSH DAY',
     startTime: '06:42 AM',
-    metrics: { duration: '01:24', heartRate: '144' }
+    metrics: { heartRate: '144' }
   };
 
   const STATES = {
     active: {
       label: 'SESSION ACTIVE', color: '#2ec97a', dotColor: '#2ec97a', dotAnim: true,
       metrics: () => [
-        { l:'Duration',   v: SESSION.metrics.duration,  u:'h:mm', cls:'' },
+        { l:'Duration',   v: getPlaytime(), u:'current / total', cls:'dur' },
         { l:'Heart rate', v: SESSION.metrics.heartRate, u:'bpm avg', cls:'heart' }
       ]
     },
     complete: {
       label: 'SESSION COMPLETE', color: '#c97f2e', dotColor: '#c97f2e', dotAnim: true,
       metrics: () => [
-        { l:'Duration',   v: SESSION.metrics.duration,  u:'h:mm', cls:'' },
+        { l:'Duration',   v: getPlaytime(), u:'current / total', cls:'dur' },
         { l:'Heart rate', v: SESSION.metrics.heartRate, u:'bpm avg', cls:'heart' },
         { l:'PRs',        v: '0',                       u:'today', cls:'' }
       ]
@@ -391,6 +399,27 @@ html, body {
       metrics: () => []
     }
   };
+
+  // ── PLAYTIME ─────────────────────────────────────────────────
+  function fmtTime(t) {
+    t = Math.floor(t || 0);
+    const h = Math.floor(t / 3600);
+    const m = Math.floor((t % 3600) / 60);
+    const s = t % 60;
+    if (h > 0) return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  }
+
+  function getPlaytime() {
+    const current = fmtTime(vid.currentTime);
+    const total   = vid.duration && isFinite(vid.duration) ? fmtTime(vid.duration) : '--:--';
+    return `${current}<span class="dur-sep"> / </span>${total}`;
+  }
+
+  function refreshDuration() {
+    const el = document.querySelector('.metric-dur .metric-value');
+    if (el) el.innerHTML = getPlaytime();
+  }
 
   function applyState(s) {
     const d = STATES[s];
@@ -406,14 +435,18 @@ html, body {
           ${i ? `<div class="metric-sep${x.cls ? ' metric-sep-'+x.cls : ''}"></div>` : ''}
           <div class="metric${x.cls ? ' metric-'+x.cls : ''}">
             <div class="metric-label">${x.l}</div>
-            <div class="metric-value">${x.v}</div>
+            <div class="metric-value">${x.cls === 'dur' ? x.v : x.v}</div>
             <span class="metric-unit">${x.u}</span>
           </div>`).join('') : '';
+    // duration uses innerHTML so the separator span renders
+    const durEl = document.querySelector('.metric-dur .metric-value');
+    if (durEl) durEl.innerHTML = getPlaytime();
   }
 
   function tick() {
     const n = new Date(), p = v => String(v).padStart(2,'0');
     document.getElementById('live-clock').textContent = `${p(n.getHours())}:${p(n.getMinutes())}:${p(n.getSeconds())}`;
+    refreshDuration();
     if (n.getHours()===0 && n.getMinutes()===0 && n.getSeconds()<5) {
       document.getElementById('midnight').classList.add('vis');
       setTimeout(() => document.getElementById('midnight').classList.remove('vis'), 8000);

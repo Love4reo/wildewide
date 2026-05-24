@@ -132,17 +132,6 @@
     pointer-events: all; cursor: default;
   }
   .wordmark:hover { letter-spacing: 0.58em; }
-  .wordmark-dot {
-    display: inline-block; width: 5px; height: 5px; border-radius: 50%;
-    background: #e0d5bc; margin-left: 2px; margin-bottom: 2px;
-    vertical-align: middle;
-    animation: dot-pulse 3s ease-in-out infinite;
-  }
-  @keyframes dot-pulse { 0%,100%{opacity:0.3;transform:scale(1)} 50%{opacity:1;transform:scale(1.5)} }
-  .domain {
-    font-family: var(--mono); font-size: 10px;
-    color: var(--dim); letter-spacing: 0.14em; margin-top: 6px;
-  }
 
   /* ── DATE + SPLIT ── */
   .date-label {
@@ -285,8 +274,7 @@
   <div id="ui">
 
     <div class="top-left">
-      <div class="wordmark">WILDWIDE<span class="wordmark-dot"></span></div>
-      <div class="domain">wildwide.today</div>
+      <div class="wordmark">WILDWIDE</div>
     </div>
 
     <div class="top-right">
@@ -304,7 +292,7 @@
     <div class="bottom-left">
       <div class="status-label">Today's session</div>
       <div class="status-value" id="status-value" style="color:#2ec97a">SESSION ACTIVE</div>
-      <div class="status-time" id="status-time">Started 06:42 AM</div>
+
       <div id="live-clock"></div>
     </div>
 
@@ -323,7 +311,7 @@
   // ── SESSION STATE ──────────────────────────────────────────────
   // Edit this object to match today's real data
   const SESSION = {
-    state: 'active', // 'active' | 'complete' | 'none'
+    state: 'complete', // 'active' | 'complete' | 'none'
     split: 'PUSH DAY',
     startTime: '06:42 AM',
     endTime: '08:40 AM',
@@ -349,12 +337,12 @@
     },
     complete: {
       label: 'SESSION COMPLETE', color: '#c97f2e', dotColor: '#c97f2e', dotAnim: true,
-      timeLabel: () => `Ended ${SESSION.endTime} · +${SESSION.streak} streak`,
+      timeLabel: () => `Started ${SESSION.startTime}`,
       metrics: () => [
         { l:'Duration',  v: SESSION.metrics.duration,  u:'h:mm' },
         { l:'Calories',  v: SESSION.metrics.calories,  u:'kcal' },
         { l:'Heart rate',v: SESSION.metrics.heartRate, u:'bpm avg' },
-        { l:'PRs',       v: '2',                       u:'today' }
+        { l:'PRs',       v: '0',                       u:'today' }
       ]
     },
     none: {
@@ -368,7 +356,6 @@
     const d = STATES[s];
     document.getElementById('status-value').textContent = d.label;
     document.getElementById('status-value').style.color = d.color;
-    document.getElementById('status-time').textContent = d.timeLabel();
     document.getElementById('split-label').textContent = SESSION.split;
     const dot = document.getElementById('split-dot');
     dot.style.background = d.dotColor;

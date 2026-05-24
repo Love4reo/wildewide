@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WILDWIDE — Today's Session</title>
+<meta name="description" content="Today's gym session. No history. No feed. Just now.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@100;200;300;400;500;600;700;800;900&family=Barlow:wght@100;200;300;400&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --black: #060606;
+    --white: #ede8df;
+    --dim: #3a3a32;
+    --mid: #4a4a40;
+    --green: #2ec97a;
+    --amber: #c97f2e;
+    --glass: rgba(255,255,255,0.04);
+    --glass-hover: rgba(255,255,255,0.07);
+    --cond: 'Barlow Condensed', sans-serif;
+    --mono: 'Space Mono', monospace;
+  }
+
+  html, body {
+    width: 100%; height: 100%;
+    overflow: hidden;
+    background: var(--black);
+    color: var(--white);
+    font-family: 'Barlow', sans-serif;
+    cursor: default;
+  }
+
+  /* ── SHELL ── */
+  #app {
+    position: relative;
+    width: 100vw; height: 100vh;
+    overflow: hidden;
+  }
+
+  /* ── VIDEO ── */
+  #vid {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    object-fit: cover;
+    z-index: 1;
+    opacity: 0;
+    transition: opacity 2.5s ease;
+    filter: contrast(1.1) brightness(0.52) saturate(0.72);
+  }
+  #vid.vis { opacity: 1; }
+
+  /* ── OVERLAYS ── */
+  #grain {
+    position: absolute; inset: 0; z-index: 4;
+    pointer-events: none; opacity: 0.5;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.78' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.08'/%3E%3C/svg%3E");
+  }
+  #vignette {
+    position: absolute; inset: 0; z-index: 4; pointer-events: none;
+    background: radial-gradient(ellipse 78% 78% at 50% 50%, transparent 28%, rgba(0,0,0,0.88) 100%);
+  }
+  #grad-top {
+    position: absolute; top: 0; left: 0; right: 0; height: 40%;
+    z-index: 4; pointer-events: none;
+    background: linear-gradient(to bottom, rgba(4,4,4,0.92) 0%, transparent 100%);
+  }
+  #grad-bottom {
+    position: absolute; bottom: 0; left: 0; right: 0; height: 54%;
+    z-index: 4; pointer-events: none;
+    background: linear-gradient(to top, rgba(4,4,4,0.98) 0%, rgba(4,4,4,0.52) 55%, transparent 100%);
+  }
+
+  /* ── LOADER ── */
+  #loader {
+    position: absolute; inset: 0; z-index: 80;
+    background: var(--black);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 28px;
+    transition: opacity 1s ease, visibility 1s ease;
+  }
+  #loader.out { opacity: 0; visibility: hidden; }
+  .ldr-word {
+    font-family: var(--cond);
+    font-size: clamp(52px, 9vw, 96px);
+    font-weight: 900; letter-spacing: 0.3em;
+    color: var(--white);
+    animation: ldr-pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes ldr-pulse { 0%,100%{opacity:0.12} 50%{opacity:1} }
+  .ldr-bar { width: 72px; height: 1px; background: #1e1e1e; position: relative; overflow: hidden; }
+  .ldr-bar::after {
+    content: ''; position: absolute; top: 0; left: -100%;
+    width: 100%; height: 100%; background: var(--white);
+    animation: ldr-slide 1.1s ease-in-out infinite;
+  }
+  @keyframes ldr-slide { 0%{left:-100%} 100%{left:100%} }
+  .ldr-sub {
+    font-family: var(--mono); font-size: 10px;
+    letter-spacing: 0.22em; color: #2e2e28; text-transform: uppercase;
+  }
+
+  /* ── UI GRID ── */
+  #ui {
+    position: absolute; inset: 0; z-index: 10;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto 1fr auto;
+    padding: clamp(22px, 3.5vw, 44px) clamp(26px, 4vw, 52px);
+    pointer-events: none;
+    opacity: 0; transition: opacity 1.4s ease 0.4s;
+  }
+  #ui.vis { opacity: 1; }
+
+  /* corners */
+  .top-left    { grid-column:1; grid-row:1; align-self:start; }
+  .top-right   { grid-column:2; grid-row:1; align-self:start; text-align:right; }
+  .center      { grid-column:1/3; grid-row:2; }
+  .bottom-left { grid-column:1; grid-row:3; align-self:end; pointer-events:all; }
+  .bottom-right{ grid-column:2; grid-row:3; align-self:end; text-align:right; pointer-events:all; }
+
+  /* ── WORDMARK ── */
+  .wordmark {
+    font-family: var(--cond);
+    font-size: clamp(17px, 2vw, 23px);
+    font-weight: 900; letter-spacing: 0.4em;
+    color: var(--white); text-transform: uppercase; line-height: 1;
+    display: inline-block;
+    transition: letter-spacing 0.5s ease;
+    pointer-events: all; cursor: default;
+  }
+  .wordmark:hover { letter-spacing: 0.58em; }
+  .wordmark-dot {
+    display: inline-block; width: 5px; height: 5px; border-radius: 50%;
+    background: #e0d5bc; margin-left: 2px; margin-bottom: 2px;
+    vertical-align: middle;
+    animation: dot-pulse 3s ease-in-out infinite;
+  }
+  @keyframes dot-pulse { 0%,100%{opacity:0.3;transform:scale(1)} 50%{opacity:1;transform:scale(1.5)} }
+  .domain {
+    font-family: var(--mono); font-size: 10px;
+    color: var(--dim); letter-spacing: 0.14em; margin-top: 6px;
+  }
+
+  /* ── DATE + SPLIT ── */
+  .date-label {
+    font-family: var(--mono); font-size: 10px;
+    color: var(--mid); letter-spacing: 0.14em;
+    text-transform: uppercase; margin-bottom: 8px;
+  }
+  .split-badge {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 5px 14px;
+    border: 0.5px solid rgba(255,255,255,0.1);
+    background: var(--glass);
+    backdrop-filter: blur(12px);
+    font-family: var(--cond); font-size: 12px; font-weight: 700;
+    letter-spacing: 0.28em; color: var(--white); text-transform: uppercase;
+    border-radius: 2px;
+    transition: border-color 0.3s, background 0.3s;
+    pointer-events: all; cursor: default;
+  }
+  .split-badge:hover { background: var(--glass-hover); border-color: rgba(255,255,255,0.22); }
+  .split-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    transition: background 0.4s;
+    animation: blink 2s ease-in-out infinite;
+  }
+  @keyframes blink { 0%,100%{opacity:0.4} 50%{opacity:1} }
+  .split-dot.off { animation: none; }
+
+  /* ── SESSION STATUS ── */
+  .status-label {
+    font-family: var(--mono); font-size: 9px;
+    color: var(--dim); letter-spacing: 0.2em;
+    text-transform: uppercase; margin-bottom: 5px;
+  }
+  .status-value {
+    font-family: var(--cond); font-size: clamp(20px, 2.2vw, 28px);
+    font-weight: 800; letter-spacing: 0.2em;
+    text-transform: uppercase; line-height: 1;
+    transition: color 0.4s ease;
+  }
+  .status-time {
+    font-family: var(--mono); font-size: 9px;
+    color: var(--dim); letter-spacing: 0.1em; margin-top: 5px;
+  }
+  #live-clock {
+    font-family: var(--mono); font-size: 13px;
+    color: rgba(237,232,223,0.42); letter-spacing: 0.14em; margin-top: 5px;
+  }
+
+  /* ── METRICS ── */
+  .metrics {
+    display: flex; gap: clamp(16px, 2.5vw, 28px);
+    justify-content: flex-end; align-items: flex-end;
+  }
+  .metric { text-align: right; transition: transform 0.3s ease; pointer-events: all; }
+  .metric:hover { transform: translateY(-3px); }
+  .metric-label {
+    font-family: var(--mono); font-size: 9px;
+    color: var(--dim); letter-spacing: 0.18em;
+    text-transform: uppercase; margin-bottom: 3px;
+  }
+  .metric-value {
+    font-family: var(--cond); font-size: clamp(26px, 3vw, 38px);
+    font-weight: 900; color: var(--white); line-height: 1; letter-spacing: 0.01em;
+  }
+  .metric-unit {
+    font-family: var(--mono); font-size: 9px;
+    color: var(--dim); letter-spacing: 0.1em;
+    display: block; margin-top: 2px;
+  }
+  .metric-sep {
+    width: 0.5px; height: 38px;
+    background: rgba(255,255,255,0.07);
+    align-self: flex-end; margin-bottom: 10px;
+  }
+
+  /* ── SOUND TOGGLE ── */
+  #sound-btn {
+    position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
+    z-index: 20; pointer-events: all;
+    background: rgba(6,6,6,0.65); backdrop-filter: blur(16px);
+    border: 0.5px solid rgba(255,255,255,0.08); border-bottom: none;
+    color: var(--dim); font-family: var(--mono); font-size: 9px;
+    letter-spacing: 0.22em; text-transform: uppercase;
+    padding: 8px 20px; cursor: pointer; border-radius: 0;
+    transition: color 0.3s, border-color 0.3s;
+  }
+  #sound-btn:hover { color: var(--white); border-color: rgba(255,255,255,0.16); }
+
+  /* ── MIDNIGHT RESET ── */
+  #midnight {
+    position: absolute; inset: 0; z-index: 70;
+    background: var(--black);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 18px;
+    opacity: 0; pointer-events: none;
+    transition: opacity 1s ease;
+  }
+  #midnight.vis { opacity: 1; pointer-events: all; }
+  .midnight-pre { font-family: var(--mono); font-size: 11px; letter-spacing: 0.38em; color: var(--dim); text-transform: uppercase; }
+  .midnight-word { font-family: var(--cond); font-size: clamp(48px, 9vw, 96px); font-weight: 900; letter-spacing: 0.3em; color: var(--white); text-transform: uppercase; }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 600px) {
+    .metrics { gap: 14px; }
+    .metric-sep { display: none; }
+    #ui { padding: 18px 20px; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- Video -->
+  <video id="vid" autoplay muted loop playsinline>
+    <source src="https://wildwide-cdn.b-cdn.net/session.mp4" type="video/mp4">
+  </video>
+
+  <!-- Overlays -->
+  <div id="grain"></div>
+  <div id="vignette"></div>
+  <div id="grad-top"></div>
+  <div id="grad-bottom"></div>
+
+  <!-- Loader -->
+  <div id="loader">
+    <div class="ldr-word">WILDWIDE</div>
+    <div class="ldr-bar"></div>
+    <div class="ldr-sub">Loading today's session</div>
+  </div>
+
+  <!-- Midnight reset -->
+  <div id="midnight">
+    <div class="midnight-pre">The session is over</div>
+    <div class="midnight-word">RESET</div>
+    <div class="midnight-pre">Tomorrow begins at 00:00</div>
+  </div>
+
+  <!-- UI -->
+  <div id="ui">
+
+    <div class="top-left">
+      <div class="wordmark">WILDWIDE<span class="wordmark-dot"></span></div>
+      <div class="domain">wildwide.today</div>
+    </div>
+
+    <div class="top-right">
+      <div class="date-label" id="date-display"></div>
+      <div>
+        <span class="split-badge">
+          <span class="split-dot" id="split-dot" style="background:#2ec97a"></span>
+          <span id="split-label">PUSH DAY</span>
+        </span>
+      </div>
+    </div>
+
+    <div class="center"></div>
+
+    <div class="bottom-left">
+      <div class="status-label">Today's session</div>
+      <div class="status-value" id="status-value" style="color:#2ec97a">SESSION ACTIVE</div>
+      <div class="status-time" id="status-time">Started 06:42 AM</div>
+      <div id="live-clock"></div>
+    </div>
+
+    <div class="bottom-right">
+      <div class="metrics" id="metrics"></div>
+    </div>
+
+  </div>
+
+  <!-- Sound -->
+  <button id="sound-btn" onclick="toggleSound()">◌ Sound off</button>
+
+</div>
+
+<script>
+  // ── SESSION STATE ──────────────────────────────────────────────
+  // Edit this object to match today's real data
+  const SESSION = {
+    state: 'active', // 'active' | 'complete' | 'none'
+    split: 'PUSH DAY',
+    startTime: '06:42 AM',
+    endTime: '08:40 AM',
+    streak: 2,
+    metrics: {
+      duration: '01:24',
+      calories: '487',
+      heartRate: '144',
+      start: '06:42'
+    }
+  };
+
+  const STATES = {
+    active: {
+      label: 'SESSION ACTIVE', color: '#2ec97a', dotColor: '#2ec97a', dotAnim: true,
+      timeLabel: () => `Started ${SESSION.startTime}`,
+      metrics: () => [
+        { l:'Duration',  v: SESSION.metrics.duration,  u:'h:mm' },
+        { l:'Calories',  v: SESSION.metrics.calories,  u:'kcal' },
+        { l:'Heart rate',v: SESSION.metrics.heartRate, u:'bpm avg' },
+        { l:'Start',     v: SESSION.metrics.start,     u:'am' }
+      ]
+    },
+    complete: {
+      label: 'SESSION COMPLETE', color: '#c97f2e', dotColor: '#c97f2e', dotAnim: true,
+      timeLabel: () => `Ended ${SESSION.endTime} · +${SESSION.streak} streak`,
+      metrics: () => [
+        { l:'Duration',  v: SESSION.metrics.duration,  u:'h:mm' },
+        { l:'Calories',  v: SESSION.metrics.calories,  u:'kcal' },
+        { l:'Heart rate',v: SESSION.metrics.heartRate, u:'bpm avg' },
+        { l:'PRs',       v: '2',                       u:'today' }
+      ]
+    },
+    none: {
+      label: 'NO SESSION TODAY', color: '#383830', dotColor: '#383830', dotAnim: false,
+      timeLabel: () => 'Next session: tomorrow',
+      metrics: () => []
+    }
+  };
+
+  function applyState(s) {
+    const d = STATES[s];
+    document.getElementById('status-value').textContent = d.label;
+    document.getElementById('status-value').style.color = d.color;
+    document.getElementById('status-time').textContent = d.timeLabel();
+    document.getElementById('split-label').textContent = SESSION.split;
+    const dot = document.getElementById('split-dot');
+    dot.style.background = d.dotColor;
+    dot.className = 'split-dot' + (d.dotAnim ? '' : ' off');
+    const m = d.metrics();
+    const el = document.getElementById('metrics');
+    el.innerHTML = m.length ? m.map((x, i) =>
+      `${i ? '<div class="metric-sep"></div>' : ''}
+       <div class="metric">
+         <div class="metric-label">${x.l}</div>
+         <div class="metric-value">${x.v}</div>
+         <span class="metric-unit">${x.u}</span>
+       </div>`).join('') : '';
+  }
+
+  // ── CLOCK ─────────────────────────────────────────────────────
+  function tick() {
+    const n = new Date();
+    const pad = v => String(v).padStart(2, '0');
+    document.getElementById('live-clock').textContent =
+      `${pad(n.getHours())}:${pad(n.getMinutes())}:${pad(n.getSeconds())}`;
+    if (n.getHours() === 0 && n.getMinutes() === 0 && n.getSeconds() < 5) {
+      document.getElementById('midnight').classList.add('vis');
+      setTimeout(() => document.getElementById('midnight').classList.remove('vis'), 8000);
+    }
+  }
+
+  function setDate() {
+    const n = new Date();
+    const days = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
+    const months = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+    document.getElementById('date-display').textContent =
+      `${days[n.getDay()]} · ${n.getDate()} ${months[n.getMonth()]} ${n.getFullYear()}`;
+  }
+
+  // ── SOUND ─────────────────────────────────────────────────────
+  function toggleSound() {
+    const vid = document.getElementById('vid');
+    const btn = document.getElementById('sound-btn');
+    vid.muted = !vid.muted;
+    btn.textContent = vid.muted ? '◌ Sound off' : '◉ Sound on';
+  }
+
+  // ── VIDEO ─────────────────────────────────────────────────────
+  const vid = document.getElementById('vid');
+  vid.addEventListener('canplay', () => vid.classList.add('vis'));
+  vid.addEventListener('error',   () => console.warn('Video failed to load.'));
+
+  // ── INIT ──────────────────────────────────────────────────────
+  window.addEventListener('load', () => {
+    setDate();
+    tick();
+    setInterval(tick, 1000);
+    applyState(SESSION.state);
+    vid.play().catch(() => {});
+    setTimeout(() => {
+      document.getElementById('loader').classList.add('out');
+      document.getElementById('ui').classList.add('vis');
+    }, 2000);
+  });
+</script>
+</body>
+</html>

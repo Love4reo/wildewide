@@ -298,6 +298,102 @@ html, body {
     letter-spacing: 0.18em;
   }
 }
+
+/* ── PLAY/PAUSE ICON OVERLAY ── */
+#play-overlay {
+  position: absolute; inset: 0; z-index: 9;
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: none;
+}
+#play-icon {
+  opacity: 0;
+  transition: opacity 0.35s ease;
+  width: clamp(48px, 8vmin, 80px);
+  height: clamp(48px, 8vmin, 80px);
+  background: rgba(0,0,0,0.45);
+  backdrop-filter: blur(8px);
+  border: 0.5px solid rgba(255,255,255,0.12);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+}
+#play-icon.show { opacity: 1; }
+#play-icon svg {
+  width: clamp(18px, 3vmin, 28px);
+  height: clamp(18px, 3vmin, 28px);
+}
+
+/* ── VIDEO TAP ZONE ── */
+#vid-tap {
+  position: absolute; inset: 0;
+  z-index: 8;
+  cursor: pointer;
+}
+
+/* ── SCRUBBER ── */
+#scrubber-wrap {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  z-index: 20;
+  padding: 0;
+  height: clamp(28px, 4vmin, 36px);
+  display: flex; align-items: flex-end;
+  cursor: pointer;
+}
+#scrubber-track {
+  position: relative;
+  width: 100%;
+  height: 2px;
+  background: rgba(255,255,255,0.1);
+  transition: height 0.2s ease;
+}
+#scrubber-wrap:hover #scrubber-track,
+#scrubber-wrap:active #scrubber-track {
+  height: 3px;
+}
+#scrubber-fill {
+  position: absolute; top: 0; left: 0;
+  height: 100%;
+  background: rgba(237,232,223,0.75);
+  width: 0%;
+  transition: width 0.25s linear;
+  pointer-events: none;
+}
+#scrubber-thumb {
+  position: absolute; top: 50%;
+  transform: translate(-50%, -50%);
+  width: clamp(8px, 1.4vmin, 12px);
+  height: clamp(8px, 1.4vmin, 12px);
+  border-radius: 50%;
+  background: var(--white);
+  left: 0%;
+  opacity: 0;
+  transition: opacity 0.2s ease, left 0.25s linear;
+  pointer-events: none;
+  box-shadow: 0 0 6px rgba(0,0,0,0.6);
+}
+#scrubber-wrap:hover #scrubber-thumb,
+#scrubber-wrap:active #scrubber-thumb {
+  opacity: 1;
+}
+#scrubber-time {
+  position: absolute;
+  bottom: 10px;
+  left: 0%;
+  transform: translateX(-50%);
+  font-family: var(--mono);
+  font-size: clamp(7px, 1vmin, 9px);
+  color: rgba(237,232,223,0.6);
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.8);
+}
+#scrubber-wrap:hover #scrubber-time,
+#scrubber-wrap:active #scrubber-time {
+  opacity: 1;
+}
 </style>
 </head>
 <body>
@@ -306,6 +402,31 @@ html, body {
   <video id="vid" autoplay muted loop playsinline>
     <source src="https://wildwide-cdn.b-cdn.net/session.mp4" type="video/mp4">
   </video>
+
+  <!-- Tap to play/pause -->
+  <div id="vid-tap" onclick="togglePlay()"></div>
+
+  <!-- Play/pause icon -->
+  <div id="play-overlay">
+    <div id="play-icon">
+      <svg id="pi-svg" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <polygon id="pi-play" points="6,4 20,12 6,20" fill="#ede8df"/>
+        <g id="pi-pause" style="display:none">
+          <rect x="5" y="4" width="4" height="16" rx="1" fill="#ede8df"/>
+          <rect x="15" y="4" width="4" height="16" rx="1" fill="#ede8df"/>
+        </g>
+      </svg>
+    </div>
+  </div>
+
+  <!-- Scrubber -->
+  <div id="scrubber-wrap" onmousedown="scrubStart(event)" ontouchstart="scrubStart(event)">
+    <div id="scrubber-track">
+      <div id="scrubber-fill"></div>
+      <div id="scrubber-thumb"></div>
+      <div id="scrubber-time">00:00</div>
+    </div>
+  </div>
 
   <div id="grain"></div>
   <div id="vignette"></div>
@@ -474,6 +595,78 @@ html, body {
   const vid = document.getElementById('vid');
   vid.addEventListener('canplay', () => vid.classList.add('vis'));
   vid.addEventListener('error', () => console.warn('Video failed to load.'));
+
+  // ── PLAY / PAUSE ──────────────────────────────────────────────
+  let iconTimer = null;
+  function togglePlay() {
+    if (vid.paused) { vid.play(); showIcon('play'); }
+    else            { vid.pause(); showIcon('pause'); }
+  }
+
+  function showIcon(type) {
+    const icon = document.getElementById('play-icon');
+    document.getElementById('pi-play').style.display  = type === 'play'  ? '' : 'none';
+    document.getElementById('pi-pause').style.display = type === 'pause' ? '' : 'none';
+    icon.classList.add('show');
+    clearTimeout(iconTimer);
+    // pause icon stays visible while paused; play icon fades after 800ms
+    if (type === 'play') iconTimer = setTimeout(() => icon.classList.remove('show'), 800);
+  }
+
+  vid.addEventListener('play',  () => document.getElementById('play-icon').classList.remove('show'));
+  vid.addEventListener('pause', () => showIcon('pause'));
+
+  // ── SCRUBBER ──────────────────────────────────────────────────
+  let scrubbing = false;
+
+  function scrubPos(e) {
+    const track = document.getElementById('scrubber-track');
+    const rect  = track.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    return Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+  }
+
+  function scrubStart(e) {
+    e.preventDefault();
+    scrubbing = true;
+    scrubMove(e);
+    document.addEventListener('mousemove', scrubMove);
+    document.addEventListener('mouseup',   scrubEnd);
+    document.addEventListener('touchmove', scrubMove, { passive: false });
+    document.addEventListener('touchend',  scrubEnd);
+  }
+
+  function scrubMove(e) {
+    if (!scrubbing || !vid.duration) return;
+    e.preventDefault && e.preventDefault();
+    const pct = scrubPos(e);
+    updateScrubUI(pct);
+    document.getElementById('scrubber-time').textContent = fmtTime(pct * vid.duration);
+  }
+
+  function scrubEnd(e) {
+    if (!scrubbing) return;
+    scrubbing = false;
+    if (vid.duration) vid.currentTime = scrubPos(e) * vid.duration;
+    document.removeEventListener('mousemove', scrubMove);
+    document.removeEventListener('mouseup',   scrubEnd);
+    document.removeEventListener('touchmove', scrubMove);
+    document.removeEventListener('touchend',  scrubEnd);
+  }
+
+  function updateScrubUI(pct) {
+    document.getElementById('scrubber-fill').style.width  = `${pct * 100}%`;
+    document.getElementById('scrubber-thumb').style.left  = `${pct * 100}%`;
+    document.getElementById('scrubber-time').style.left   = `${pct * 100}%`;
+  }
+
+  vid.addEventListener('timeupdate', () => {
+    if (!scrubbing && vid.duration) {
+      const pct = vid.currentTime / vid.duration;
+      updateScrubUI(pct);
+      document.getElementById('scrubber-time').textContent = fmtTime(vid.currentTime);
+    }
+  });
 
   window.addEventListener('load', () => {
     setDate(); tick(); setInterval(tick, 1000);

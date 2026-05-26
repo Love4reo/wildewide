@@ -200,7 +200,7 @@ html, body {
   font-family: var(--cond); font-size: var(--t-status);
   font-weight: 800; letter-spacing: 0.18em;
   text-transform: uppercase; line-height: 1;
-  transition: color 0.4s ease; white-space: nowrap;
+  transition: color 0.4s ease; white-space: normal;
 }
 #live-clock {
   font-family: var(--mono); font-size: var(--t-clock);
@@ -508,7 +508,7 @@ html, body {
       ]
     },
     complete: {
-      label: 'LEG DAY FEATURING SHOULDERS', color: '#c97f2e', dotColor: '#c97f2e', dotAnim: true,
+      label: 'LEG DAY<br>FEATURING SHOULDERS', color: '#c97f2e', dotColor: '#c97f2e', dotAnim: true,
       metrics: () => [
         { l:'Duration',   v: getPlaytime(), u:'current / total', cls:'dur' },
         { l:'Heart rate', v: SESSION.metrics.heartRate, u:'bpm avg', cls:'heart' },

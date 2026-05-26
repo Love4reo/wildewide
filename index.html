@@ -544,7 +544,7 @@ html, body {
 
   function applyState(s) {
     const d = STATES[s];
-    document.getElementById('status-value').textContent = d.label;
+    document.getElementById('status-value').innerHTML = d.label;
     document.getElementById('status-value').style.color = d.color;
     document.getElementById('split-label').textContent = SESSION.split;
     const dot = document.getElementById('split-dot');

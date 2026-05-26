@@ -283,6 +283,53 @@ html, body {
 .midnight-pre  { font-family: var(--mono); font-size: clamp(8px, 1.2vmin, 12px); letter-spacing: 0.35em; color: var(--dim); text-transform: uppercase; }
 .midnight-word { font-family: var(--cond); font-size: clamp(40px, 10vmin, 100px); font-weight: 900; letter-spacing: 0.28em; color: var(--white); text-transform: uppercase; }
 
+/* ── ROTATE PROMPT ── */
+#rotate-prompt {
+  display: none;
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(6,6,6,0.92);
+  backdrop-filter: blur(16px);
+  flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 20px;
+  text-align: center;
+  padding: 40px;
+}
+#rotate-prompt.show { display: flex; }
+.rotate-icon {
+  animation: rotate-hint 2s ease-in-out infinite;
+}
+@keyframes rotate-hint {
+  0%,100% { transform: rotate(0deg); }
+  40%      { transform: rotate(90deg); }
+  60%      { transform: rotate(90deg); }
+}
+.rotate-title {
+  font-family: var(--cond);
+  font-size: clamp(22px, 5vmin, 32px);
+  font-weight: 900; letter-spacing: 0.22em;
+  color: var(--white); text-transform: uppercase;
+  line-height: 1.1;
+}
+.rotate-sub {
+  font-family: var(--mono);
+  font-size: clamp(9px, 1.8vmin, 11px);
+  letter-spacing: 0.18em; color: var(--dim);
+  text-transform: uppercase;
+}
+.rotate-dismiss {
+  margin-top: 8px;
+  background: none; border: 0.5px solid rgba(255,255,255,0.12);
+  color: var(--dim); font-family: var(--mono);
+  font-size: 9px; letter-spacing: 0.2em;
+  text-transform: uppercase; padding: 8px 20px;
+  cursor: pointer; border-radius: 2px;
+  transition: color 0.3s, border-color 0.3s;
+  -webkit-tap-highlight-color: transparent;
+}
+.rotate-dismiss:hover,
+.rotate-dismiss:active { color: var(--white); border-color: rgba(255,255,255,0.3); }
+
 /* ── LANDSCAPE MOBILE ── */
 @media (max-height: 500px) and (orientation: landscape) {
   #grad-bottom { height: 65%; }
@@ -398,6 +445,23 @@ html, body {
 </head>
 <body>
 <div id="app">
+
+  <!-- Rotate prompt -->
+  <div id="rotate-prompt">
+    <div class="rotate-icon">
+      <svg width="52" height="52" viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <!-- Phone outline -->
+        <rect x="16" y="6" width="20" height="34" rx="3" stroke="#ede8df" stroke-width="1.5" fill="none"/>
+        <circle cx="26" cy="35" r="1.5" fill="#ede8df"/>
+        <!-- Rotate arrow -->
+        <path d="M10 28 Q6 20 14 14" stroke="#c97f2e" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+        <path d="M14 14 L10 10 M14 14 L18 11" stroke="#c97f2e" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      </svg>
+    </div>
+    <div class="rotate-title">Best in<br>Landscape</div>
+    <div class="rotate-sub">Rotate your phone for the full experience</div>
+    <button class="rotate-dismiss" onclick="dismissRotate()">Continue anyway</button>
+  </div>
 
   <video id="vid" autoplay muted loop playsinline>
     <source src="https://wildwide-cdn.b-cdn.net/session.mp4" type="video/mp4">
@@ -668,6 +732,30 @@ html, body {
     }
   });
 
+  // ── ROTATE PROMPT ──────────────────────────────────────────
+  let rotateDismissed = false;
+
+  function checkOrientation() {
+    const isMobile = window.innerWidth <= 900 && 'ontouchstart' in window;
+    const isPortrait = window.innerHeight > window.innerWidth;
+    const prompt = document.getElementById('rotate-prompt');
+    if (isMobile && isPortrait && !rotateDismissed) {
+      prompt.classList.add('show');
+    } else {
+      prompt.classList.remove('show');
+    }
+  }
+
+  function dismissRotate() {
+    rotateDismissed = true;
+    document.getElementById('rotate-prompt').classList.remove('show');
+  }
+
+  window.addEventListener('orientationchange', () => {
+    setTimeout(checkOrientation, 300);
+  });
+  window.addEventListener('resize', checkOrientation);
+
   window.addEventListener('load', () => {
     setDate(); tick(); setInterval(tick, 1000);
     applyState(SESSION.state);
@@ -675,7 +763,8 @@ html, body {
     setTimeout(() => {
       document.getElementById('loader').classList.add('out');
       document.getElementById('ui').classList.add('vis');
-    }, 2000);
+      checkOrientation();
+    }, 2200);
   });
 </script>
 </body>

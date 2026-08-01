@@ -360,16 +360,22 @@ html, body {
 }
 .rotate-dismiss {
   margin-top: 8px;
-  background: none; border: 0.5px solid rgba(255,255,255,0.12);
-  color: var(--dim); font-family: var(--mono);
-  font-size: 9px; letter-spacing: 0.2em;
-  text-transform: uppercase; padding: 8px 20px;
+  background: var(--white);
+  border: none;
+  color: var(--black);
+  font-family: var(--mono);
+  font-size: clamp(10px, 1.6vmin, 12px);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding: clamp(12px, 2vmin, 16px) clamp(28px, 5vmin, 44px);
   cursor: pointer; border-radius: 2px;
-  transition: color 0.3s, border-color 0.3s;
+  font-weight: 700;
+  transition: background 0.3s, transform 0.2s;
   -webkit-tap-highlight-color: transparent;
+  min-width: 180px;
 }
-.rotate-dismiss:hover,
-.rotate-dismiss:active { color: var(--white); border-color: rgba(255,255,255,0.3); }
+.rotate-dismiss:hover { background: #d4cfc6; }
+.rotate-dismiss:active { transform: scale(0.97); }
 
 /* ── LANDSCAPE MOBILE ── */
 @media (max-height: 500px) and (orientation: landscape) {
